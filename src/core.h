@@ -10,6 +10,8 @@
 
 GLFWwindow* window;
 
+float seed;
+
 #include <fstream>
 #include <sstream>
 #include <vector>
@@ -47,11 +49,13 @@ void initialize() {
     glewInit();
     glEnable(GL_DEPTH_TEST);
     
+    srand(static_cast<unsigned int>(std::time(nullptr)));
+    seed = (float)(rand() % 10000) * 10.23322f;
     
     std::vector<Terrain> terrain = std::vector<Terrain>();
-    for (int x = 0; x < 1; x++) {
-        for (int z = 0; z < 1; z++) {
-            Terrain t = Terrain::CreateTerrain();
+    for (int x = -4; x < 4; x++) {
+        for (int z = -4; z < 4; z++) {
+            Terrain t = Terrain::CreateTerrain(x, z);
             terrain.push_back(t);
         }
     }
@@ -62,7 +66,6 @@ void initialize() {
     Shader shader = Shader::Create("/Users/dmitriwamback/Documents/Projects/Marching Cube Terrain/Marching Cube Terrain/src/shaders/main");
     
     double previousTime = glfwGetTime();
-    double previousDeltaTime = glfwGetTime();
     int frameCount = 0;
     
     while (!glfwWindowShouldClose(window)) {
@@ -73,6 +76,18 @@ void initialize() {
         movement.w = glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS ? -0.05f : 0;
         movement.x = glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS ?  0.05f : 0;
         movement.y = glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS ? -0.05f : 0;
+        
+        if (glfwGetKey(window, GLFW_KEY_E)) {
+            terrain = {};
+            srand(static_cast<unsigned int>(std::time(nullptr)));
+            seed = (float)(rand() % 10000) * 10.23322f;
+            for (int x = -4; x < 4; x++) {
+                for (int z = -4; z < 4; z++) {
+                    Terrain t = Terrain::CreateTerrain(x, z);
+                    terrain.push_back(t);
+                }
+            }
+        }
         
         camera.Update(movement);
         std::cout << camera.position.x << " " << camera.position.y << " " << camera.position.z << '\n';

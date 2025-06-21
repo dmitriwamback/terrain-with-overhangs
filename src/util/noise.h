@@ -90,6 +90,7 @@ double noiseLayer(double x, double y, double lacunarity, double persistance, int
     
     double freq = 2.0,
            ampl = 2.0;
+    double maxAmplitude = 0.0;
     
     double n = 0;
     
@@ -97,6 +98,7 @@ double noiseLayer(double x, double y, double lacunarity, double persistance, int
         n += noise(x*freq, y*freq, seed*freq)*ampl;
         freq *= lacunarity;
         ampl *= persistance;
+        maxAmplitude += ampl;
     }
     
     return n;

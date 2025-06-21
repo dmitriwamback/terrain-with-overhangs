@@ -14,37 +14,54 @@ public:
     std::vector<Vertex> vertices;
     glm::vec3 position, scale, rotation;
     
-    static Terrain CreateTerrain();
+    static Terrain CreateTerrain(int xOffset, int yOffset);
     void Render(Shader shader);
+    void Generate(int xOffset, int yOffset);
     glm::mat4 CreateModelMatrix();
 private:
     uint32_t vertexArrayObject, vertexBufferObject, indexBufferObject;
 };
 
-Terrain Terrain::CreateTerrain() {
+Terrain Terrain::CreateTerrain(int xOffset, int yOffset) {
     Terrain terrain = Terrain();
     
-    const int size = 128;
-    const float isolevel = 0.0f;
+    terrain.Generate(xOffset, yOffset);
+    return terrain;
+}
+
+void Terrain::Render(Shader shader) {
+    shader.Use();
+        
+    glm::mat4 model = CreateModelMatrix();
+        
+    glBindVertexArray(vertexArrayObject);
+    shader.SetMatrix4("model", model);
     
-    const float frequency = 0.15f;
+    glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+    glBindVertexArray(0);
+}
+
+void Terrain::Generate(int xOffset, int yOffset) {
+    const int size = 16;
+    const float isolevel = 0.0f;
+
+    const float frequency = 0.055f;
     const float lacunarity = 1.6f;
     const float persistence = 0.6f;
     const float heightScale = 150.0f;
-    const float caveFreq = 7.0f;
+    const float caveFreq = 10.0f;
     
-    srand(static_cast<unsigned int>(std::time(nullptr)));
-    float seed = (float)(rand()%1000000)*2.24821838f;
+    vertices = {};
 
-    terrain.density = std::vector<std::vector<std::vector<float>>>(128, std::vector<std::vector<float>>(128, std::vector<float>(128)));
+    density = std::vector<std::vector<std::vector<float>>>(size, std::vector<std::vector<float>>(128, std::vector<float>(size)));
 
     for (int x = 0; x < size; x++) {
         for (int y = 0; y < 128; y++) {
             for (int z = 0; z < size; z++) {
-
-                float xi = (float)(x + seed) * frequency / (float)size;
+                
+                float xi = (float)(x + seed + xOffset*8) * frequency / (float)size;
                 float yi = (float)y * frequency / (float)size;
-                float zi = (float)(z + seed) * frequency / (float)size;
+                float zi = (float)(z + seed + yOffset*8) * frequency / (float)size;
 
                 float mountainNoise = noiseLayer(xi, zi, lacunarity, persistence, 20, 6);
                 float baseHeight = pow(mountainNoise, 1.0f) * heightScale;
@@ -52,9 +69,9 @@ Terrain Terrain::CreateTerrain() {
                 float caveNoise = noiseLayer(xi * caveFreq, yi * caveFreq, lacunarity, persistence, 20, zi * caveFreq);
                 
                 float terrainSurface = (float)y - baseHeight;
-                float density = terrainSurface + caveNoise * 12.0f;
+                float _density = terrainSurface + caveNoise * 12.0f;
 
-                terrain.density[x][y][z] = density;
+                density[x][y][z] = _density;
             }
         }
     }
@@ -86,7 +103,7 @@ Terrain Terrain::CreateTerrain() {
                 for (int i = 0; i < 8; ++i) {
                     glm::vec3 pos = glm::vec3(x, y, z) + vertexOffsets[i];
                     cubePositions[i] = pos;
-                    cubeValues[i] = terrain.density[(int)pos.x][(int)pos.y][(int)pos.z];
+                    cubeValues[i] = density[(int)pos.x][(int)pos.y][(int)pos.z];
                 }
 
                 int cubeIndex = 0;
@@ -122,26 +139,26 @@ Terrain Terrain::CreateTerrain() {
                     glm::vec3 v2 = edgeVertices[triTable[cubeIndex][i + 2]];
 
                     glm::vec3 normal = glm::normalize(glm::cross(v2 - v0, v1 - v0));
-                    glm::vec3 scale = glm::vec3(1.0f, 1.0f, 1.0f);
+                    glm::vec3 scale = glm::vec3(2.0f, 1.0f, 2.0f);
                     
-                    terrain.vertices.push_back({v0 * scale, normal, glm::vec2(0.0f)});
-                    terrain.vertices.push_back({v1 * scale, normal, glm::vec2(0.0f)});
-                    terrain.vertices.push_back({v2 * scale, normal, glm::vec2(0.0f)});
+                    vertices.push_back({v0 * scale, normal, glm::vec2(0.0f)});
+                    vertices.push_back({v1 * scale, normal, glm::vec2(0.0f)});
+                    vertices.push_back({v2 * scale, normal, glm::vec2(0.0f)});
                 }
             }
         }
     }
     
-    terrain.scale = glm::vec3(1.0f);
-    terrain.rotation = glm::vec3(0.0f);
-    terrain.position = glm::vec3(-size/2, -10.0f, -size/2);
+    scale = glm::vec3(1.0f);
+    rotation = glm::vec3(0.0f);
+    position = glm::vec3(xOffset * size, -10.0f, yOffset * size);
     
-    glGenVertexArrays(1, &terrain.vertexArrayObject);
-    glBindVertexArray(terrain.vertexArrayObject);
+    glGenVertexArrays(1, &vertexArrayObject);
+    glBindVertexArray(vertexArrayObject);
     
-    glGenBuffers(1, &terrain.vertexBufferObject);
-    glBindBuffer(GL_ARRAY_BUFFER, terrain.vertexBufferObject);
-    glBufferData(GL_ARRAY_BUFFER, terrain.vertices.size() * sizeof(Vertex), terrain.vertices.data(), GL_STATIC_DRAW);
+    glGenBuffers(1, &vertexBufferObject);
+    glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObject);
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_DYNAMIC_DRAW);
     
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
@@ -149,20 +166,6 @@ Terrain Terrain::CreateTerrain() {
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, vertex));
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
-
-    return terrain;
-}
-
-void Terrain::Render(Shader shader) {
-    shader.Use();
-        
-    glm::mat4 model = CreateModelMatrix();
-        
-    glBindVertexArray(vertexArrayObject);
-    shader.SetMatrix4("model", model);
-    
-    glDrawArrays(GL_TRIANGLES, 0, vertices.size());
-    glBindVertexArray(0);
 }
 
 glm::mat4 Terrain::CreateModelMatrix() {

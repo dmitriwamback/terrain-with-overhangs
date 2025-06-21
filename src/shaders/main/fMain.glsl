@@ -24,10 +24,10 @@ void main() {
 
     vec3 color = mix(dirt, grass, slope);
 
-    vec3 ambient = color * 0.4;
+    vec3 ambient = color * 0.8;
 
     vec3 lightDirection = normalize(lightPosition - fs_in.fragp);
-    float diff = max(dot(fs_in.normal, lightDirection), 0.4);
+    float diff = max(dot(fs_in.normal, lightDirection), 0.0);
     vec3 diffuse = diff * vec3(1.0);
 
     fragc = vec4(color * (ambient + diffuse), 1.0);
