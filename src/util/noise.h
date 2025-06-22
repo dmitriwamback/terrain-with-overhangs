@@ -100,7 +100,6 @@ double noiseLayer(double x, double y, double lacunarity, double persistance, int
         ampl *= persistance;
         maxAmplitude += ampl;
     }
-    
     return n;
 }
 

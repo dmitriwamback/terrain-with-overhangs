@@ -70,12 +70,22 @@ void Terrain::Generate(int xOffset, int yOffset) {
                 
                 float terrainSurface = (float)y - baseHeight;
                 float _density = terrainSurface + caveNoise * 12.0f;
+                
+                if (y < 4) _density = -1.0f;
 
                 density[x][y][z] = _density;
             }
         }
     }
-
+    
+    for (int x = 0; x < size; x++) {
+        for (int y = 0; y < 2; y++) {
+            for (int z = 0; z < size; z++) {
+                density[x][y][z] = 1;
+            }
+        }
+    }
+    
     
     glm::vec3 vertexOffsets[8] = {
         {0, 0, 0},

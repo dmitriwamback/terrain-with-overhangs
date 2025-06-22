@@ -11,6 +11,7 @@
 GLFWwindow* window;
 
 float seed;
+float deltaTime = 0;
 
 #include <fstream>
 #include <sstream>
@@ -92,7 +93,7 @@ void initialize() {
         camera.Update(movement);
         std::cout << camera.position.x << " " << camera.position.y << " " << camera.position.z << '\n';
         
-        glClearColor(0.0, 0.0, 0.0, 0.0);
+        glClearColor(0.6, 0.7, 0.9, 1.0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         shader.Use();
@@ -104,6 +105,7 @@ void initialize() {
         }
         
         double currentTime = glfwGetTime();
+        double previousDeltaTime = glfwGetTime();
         frameCount++;
         
         if (currentTime - previousTime >= 1.0) {
@@ -112,6 +114,11 @@ void initialize() {
 
             frameCount = 0;
             previousTime = currentTime;
+            
+            double currentDeltatime = glfwGetTime();
+            deltaTime = (currentDeltatime - previousDeltaTime);
+            previousDeltaTime = currentDeltatime;
+            std::cout << deltaTime << '\n';
         }
                 
         glfwPollEvents();
