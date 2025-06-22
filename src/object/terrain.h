@@ -12,7 +12,7 @@
 
 class Terrain {
 public:
-    std::array<float, 16 * 128 * 16> density;
+    std::array<float, 16 * 256 * 16> density;
     std::vector<Vertex> vertices;
     glm::vec3 position, scale, rotation;
     
@@ -44,15 +44,15 @@ void Terrain::Render(Shader shader) {
 }
 
 inline int index3D(int x, int y, int z) {
-    return x * 128 * 16 + y * 16 + z;
+    return x * 256 * 16 + y * 16 + z;
 }
 
 void Terrain::Generate(int xOffset, int yOffset) {
     const int size = 16;
     const float isolevel = 0.0f;
 
-    const float frequency = 0.055f;
-    const float lacunarity = 1.6f;
+    const float frequency = 0.025f;
+    const float lacunarity = 1.5f;
     const float persistence = 0.6f;
     const float heightScale = 102.0f;
     const float caveFreq = 10.0f;
@@ -74,7 +74,7 @@ void Terrain::Generate(int xOffset, int yOffset) {
 
         threads.emplace_back([=, this]() {
             for (int x = startX; x < endX; ++x) {
-                for (int y = 0; y < 128; ++y) {
+                for (int y = 0; y < 256; ++y) {
                     for (int z = 0; z < size; ++z) {
 
                         float xi = (float)(x + seed + xOffset*8) * frequency / (float)size;
@@ -87,11 +87,11 @@ void Terrain::Generate(int xOffset, int yOffset) {
                         float basePlateau = noiseLayer(xi * 0.2f, zi * 0.2f, 1.2, 0.2, 3, seed);
                         baseHeight += basePlateau * 5.0f + 5;
 
-
                         float caveNoise = noiseLayer(xi * caveFreq, yi * caveFreq, lacunarity, persistence, 10, zi * caveFreq);
+                        caveNoise = glm::clamp(caveNoise, 0.0f, caveNoise);
                         
                         float terrainSurface = (float)y - baseHeight;
-                        float _density = terrainSurface + caveNoise * 5.0f;
+                        float _density = terrainSurface + caveNoise * 10.0f;
                         
                         if (y < 4) _density = -1.0f;
 
@@ -124,7 +124,7 @@ void Terrain::Generate(int xOffset, int yOffset) {
     };
 
     for (int x = 0; x < size - 1; x++) {
-        for (int y = 0; y < 128 - 1; y++) {
+        for (int y = 0; y < 256 - 1; y++) {
             for (int z = 0; z < size - 1; z++) {
                 float cubeValues[8];
                 glm::vec3 cubePositions[8];
@@ -137,7 +137,7 @@ void Terrain::Generate(int xOffset, int yOffset) {
                     
                     cubePositions[i] = pos;
 
-                    if (px >= 0 && px < size && py >= 0 && py < 128 && pz >= 0 && pz < size) {
+                    if (px >= 0 && px < size && py >= 0 && py < 256 && pz >= 0 && pz < size) {
                         
                         int index = index3D(px, py, pz);
                         

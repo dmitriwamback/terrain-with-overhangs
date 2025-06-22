@@ -19,10 +19,10 @@ void main() {
     float slope = dot(normalize(fs_in.normal), up);
     slope = clamp(slope, 0.0, 1.0);
 
-    vec3 grass = vec3(0.13, 0.4, 0.1);
-    vec3 dirt  = vec3(0.35, 0.25, 0.15);
+    vec3 grass = vec3(0.1, 0.4, 0.03);
+    vec3 dirt  = vec3(0.5, 0.5, 0.5);
 
-    vec3 color = mix(dirt, grass, slope);
+    vec3 color = slope > 0.2 ? grass : dirt;
 
     vec3 ambient = color * 0.8;
 
