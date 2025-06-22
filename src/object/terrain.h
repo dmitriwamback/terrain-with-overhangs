@@ -8,9 +8,11 @@
 #ifndef terrain_h
 #define terrain_h
 
+#include <thread>
+
 class Terrain {
 public:
-    std::vector<std::vector<std::vector<float>>> density;
+    std::array<float, 16 * 128 * 16> density;
     std::vector<Vertex> vertices;
     glm::vec3 position, scale, rotation;
     
@@ -41,6 +43,10 @@ void Terrain::Render(Shader shader) {
     glBindVertexArray(0);
 }
 
+inline int index3D(int x, int y, int z) {
+    return x * 128 * 16 + y * 16 + z;
+}
+
 void Terrain::Generate(int xOffset, int yOffset) {
     const int size = 16;
     const float isolevel = 0.0f;
@@ -48,45 +54,58 @@ void Terrain::Generate(int xOffset, int yOffset) {
     const float frequency = 0.055f;
     const float lacunarity = 1.6f;
     const float persistence = 0.6f;
-    const float heightScale = 150.0f;
+    const float heightScale = 102.0f;
     const float caveFreq = 10.0f;
     
     vertices = {};
+    
+    unsigned int numThreads = std::thread::hardware_concurrency();
+    if (numThreads == 0) numThreads = 4;
 
-    density = std::vector<std::vector<std::vector<float>>>(size, std::vector<std::vector<float>>(128, std::vector<float>(size)));
+    std::vector<std::thread> threads;
 
-    for (int x = 0; x < size; x++) {
-        for (int y = 0; y < 128; y++) {
-            for (int z = 0; z < size; z++) {
-                
-                float xi = (float)(x + seed + xOffset*8) * frequency / (float)size;
-                float yi = (float)y * frequency / (float)size;
-                float zi = (float)(z + seed + yOffset*8) * frequency / (float)size;
+    int chunkPerThread = size / numThreads;
+    int leftover = size % numThreads;
 
-                float mountainNoise = noiseLayer(xi, zi, lacunarity, persistence, 20, 6);
-                float baseHeight = pow(mountainNoise, 1.0f) * heightScale;
+    for (unsigned int t = 0; t < numThreads; ++t) {
+        int startX = t * chunkPerThread;
+        int endX = startX + chunkPerThread;
+        if (t == numThreads - 1) endX += leftover;
 
-                float caveNoise = noiseLayer(xi * caveFreq, yi * caveFreq, lacunarity, persistence, 20, zi * caveFreq);
-                
-                float terrainSurface = (float)y - baseHeight;
-                float _density = terrainSurface + caveNoise * 12.0f;
-                
-                if (y < 4) _density = -1.0f;
+        threads.emplace_back([=, this]() {
+            for (int x = startX; x < endX; ++x) {
+                for (int y = 0; y < 128; ++y) {
+                    for (int z = 0; z < size; ++z) {
 
-                density[x][y][z] = _density;
+                        float xi = (float)(x + seed + xOffset*8) * frequency / (float)size;
+                        float yi = (float)y * frequency / (float)size;
+                        float zi = (float)(z + seed + yOffset*8) * frequency / (float)size;
+
+                        float mountainNoise = noiseLayer(xi, zi, lacunarity, persistence, 10, seed);
+                        float baseHeight = pow(mountainNoise, 1.0f) * heightScale;
+                        
+                        float basePlateau = noiseLayer(xi * 0.2f, zi * 0.2f, 1.2, 0.2, 3, seed);
+                        baseHeight += basePlateau * 5.0f + 5;
+
+
+                        float caveNoise = noiseLayer(xi * caveFreq, yi * caveFreq, lacunarity, persistence, 10, zi * caveFreq);
+                        
+                        float terrainSurface = (float)y - baseHeight;
+                        float _density = terrainSurface + caveNoise * 5.0f;
+                        
+                        if (y < 4) _density = -1.0f;
+
+                        density[index3D(x, y, z)] = _density;
+                    }
+                }
             }
-        }
+        });
     }
-    
-    for (int x = 0; x < size; x++) {
-        for (int y = 0; y < 2; y++) {
-            for (int z = 0; z < size; z++) {
-                density[x][y][z] = 1;
-            }
-        }
+
+    for (auto& t : threads) {
+        t.join();
     }
-    
-    
+        
     glm::vec3 vertexOffsets[8] = {
         {0, 0, 0},
         {1, 0, 0},
@@ -109,11 +128,24 @@ void Terrain::Generate(int xOffset, int yOffset) {
             for (int z = 0; z < size - 1; z++) {
                 float cubeValues[8];
                 glm::vec3 cubePositions[8];
-
+                
                 for (int i = 0; i < 8; ++i) {
                     glm::vec3 pos = glm::vec3(x, y, z) + vertexOffsets[i];
+                    int px = static_cast<int>(pos.x);
+                    int py = static_cast<int>(pos.y);
+                    int pz = static_cast<int>(pos.z);
+                    
                     cubePositions[i] = pos;
-                    cubeValues[i] = density[(int)pos.x][(int)pos.y][(int)pos.z];
+
+                    if (px >= 0 && px < size && py >= 0 && py < 128 && pz >= 0 && pz < size) {
+                        
+                        int index = index3D(px, py, pz);
+                        
+                        cubeValues[i] = density[index];
+                    }
+                    else {
+                        cubeValues[i] = 1.0f;
+                    }
                 }
 
                 int cubeIndex = 0;

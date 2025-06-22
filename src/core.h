@@ -13,6 +13,8 @@ GLFWwindow* window;
 float seed;
 float deltaTime = 0;
 
+int terrainSize = 20;
+
 #include <fstream>
 #include <sstream>
 #include <vector>
@@ -54,8 +56,8 @@ void initialize() {
     seed = (float)(rand() % 10000) * 10.23322f;
     
     std::vector<Terrain> terrain = std::vector<Terrain>();
-    for (int x = -4; x < 4; x++) {
-        for (int z = -4; z < 4; z++) {
+    for (int x = -terrainSize/2; x < terrainSize/2; x++) {
+        for (int z = -terrainSize/2; z < terrainSize/2; z++) {
             Terrain t = Terrain::CreateTerrain(x, z);
             terrain.push_back(t);
         }
@@ -82,8 +84,8 @@ void initialize() {
             terrain = {};
             srand(static_cast<unsigned int>(std::time(nullptr)));
             seed = (float)(rand() % 10000) * 10.23322f;
-            for (int x = -4; x < 4; x++) {
-                for (int z = -4; z < 4; z++) {
+            for (int x = -terrainSize/2; x < terrainSize/2; x++) {
+                for (int z = -terrainSize/2; z < terrainSize/2; z++) {
                     Terrain t = Terrain::CreateTerrain(x, z);
                     terrain.push_back(t);
                 }
